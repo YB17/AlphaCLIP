@@ -13,12 +13,12 @@ Example usages
 
 # 冒烟测试（仅跑 5 张图）：
 python test_alphaclip_coco_panoptic.py \
-  --images-dir /path/to/coco/val2017 \
-  --panoptic-json /path/to/annotations/panoptic_val2017.json \
-  --panoptic-seg-dir /path/to/annotations/panoptic_val2017 \
-  --alpha-ckpt ./checkpoints/clip_l14_grit20m_fultune_2xe.pth \
-  --model-name "ViT-L/14" \
-  --image-size 336 \
+  --images-dir /home/host/coco/val2017 \
+  --panoptic-json /home/host/coco/annotations/panoptic_val2017.json \
+  --panoptic-seg-dir /home/host/coco/panoptic_val2017 \
+  --alpha-ckpt /home/host/alphaclip/clip_b16_grit+mim_fultune_4xe.pth \
+  --model-name "ViT-B/16" \
+  --image-size 224 \
   --limit-images 5 \
   --out-dir ./alphaclip_eval_smoke
 
@@ -571,7 +571,7 @@ def main() -> None:
 
                 summary_writer.update(instance.category_name, instance.isthing, hit, pred_label)
 
-                if summary_writer.total % 1000 == 0:
+                if summary_writer.total % 10 == 0:
                     acc = summary_writer.hits / summary_writer.total
                     print(
                         f"Processed {summary_writer.total} instances - accuracy: {acc:.4f}"
