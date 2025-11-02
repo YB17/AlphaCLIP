@@ -125,25 +125,27 @@ def load_alpha_clip(
     image_size: int,
 ) -> Tuple[torch.nn.Module, T.Compose, T.Compose]:
     try:
-        from alpha_clip import load as alpha_clip_load
+        import alpha_clip
     except ImportError as exc:  # pragma: no cover - informative message
         raise RuntimeError(
             "Failed to import alpha_clip. Please install Alpha-CLIP according to the "
             "repository README before running this script."
         ) from exc
 
-    model, preprocess = alpha_clip_load(
+    model, preprocess = alpha_clip.load(
         model_name,
-        alpha_vision_ckpt_pth=str(alpha_ckpt),
         device=str(device),
+        alpha_vision_ckpt_pth=str(alpha_ckpt),
+        lora_adapt=False,
+        rank=-1,
     )
     model.eval()
 
     mask_transform = T.Compose(
         [
             T.ToTensor(),
-            T.Resize((image_size, image_size), interpolation=T.InterpolationMode.NEAREST),
-            T.Normalize((0.5,), (0.26,)),
+            T.Resize((image_size, image_size)),
+            T.Normalize(0.5, 0.26),
         ]
     )
 
