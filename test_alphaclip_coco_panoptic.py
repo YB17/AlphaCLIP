@@ -263,16 +263,49 @@ def build_text_candidates(
     gt_label: str,
     prompt_template: str,
     label_map: Optional[Dict[str, List[str]]],
+    categories: Optional[Dict[int, dict]] = None,
+    include_rejects: bool = True,
 ) -> Tuple[List[str], List[List[str]]]:
-    gt_phrases: List[str] = [apply_template(prompt_template, gt_label)]
-    if label_map and gt_label in label_map:
-        for phrase in label_map[gt_label]:
-            formatted = apply_template(prompt_template, phrase)
-            if formatted not in gt_phrases:
-                gt_phrases.append(formatted)
+    """
+    Build text candidates and phrase groups for classification.
 
-    candidate_labels = [gt_label, "other", "unknown", "none"]
-    phrase_groups = [gt_phrases, ["other"], ["unknown"], ["none"]]
+    - If `categories` is provided (COCO panoptic categories dict {id: {name, ...}}),
+      use **all** category names in that dict as candidate labels (deduplicated, id-sorted).
+    - Otherwise, fall back to only [gt_label].
+    - For each candidate label L, construct a phrase group:
+        [ apply_template(template, L) ] + (label_map[L] after templating if provided).
+    - Optionally append ["other","unknown","none"] at the end as reject buckets.
+    """
+    # Build full candidate label list
+    if categories is not None and len(categories) > 0:
+        # stable order by category id
+        ordered = [categories[k]["name"] for k in sorted(categories.keys()) if "name" in categories[k]]
+        # deduplicate while preserving order
+        seen = set()
+        candidate_labels = []
+        for n in ordered:
+            if n not in seen:
+                seen.add(n)
+                candidate_labels.append(n)
+    else:
+        candidate_labels = [gt_label]
+
+    # Build phrase groups per label
+    phrase_groups: List[List[str]] = []
+    for lbl in candidate_labels:
+        phrases = [apply_template(prompt_template, lbl)]
+        if label_map and lbl in label_map:
+            for phrase in label_map[lbl]:
+                formatted = apply_template(prompt_template, phrase)
+                if formatted not in phrases:
+                    phrases.append(formatted)
+        phrase_groups.append(phrases)
+
+    # Append reject classes if requested
+    if include_rejects:
+        candidate_labels += ["other", "unknown", "none"]
+        phrase_groups += [["other"], ["unknown"], ["none"]]
+
     return candidate_labels, phrase_groups
 
 
@@ -548,7 +581,7 @@ def main() -> None:
                     continue
 
                 candidate_labels, phrase_groups = build_text_candidates(
-                    instance.category_name, args.prompt_template, label_map
+                    instance.category_name, args.prompt_template, label_map, categories, include_rejects=True
                 )
                 flattened_phrases = []
                 for group in phrase_groups:
